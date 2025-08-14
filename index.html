@@ -1,0 +1,537 @@
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dana Tabungan — Login → PIN → Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --blue:#2563eb; --red:#dc2626; --ink:#1f2937; --muted:#6b7280;
+    --card: #ffffff; --soft:#f9fafb; --shadow:0 10px 28px rgba(0,0,0,.12);
+  }
+  body{
+    margin:0; font-family:'Poppins',sans-serif; color:var(--ink);
+    background: radial-gradient(900px 500px at 0% 100%, rgba(220,38,38,.18), transparent),
+               radial-gradient(1200px 600px at 100% 0%, rgba(37,99,235,.18), transparent),
+               linear-gradient(135deg,#fff,#fff6f6);
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px 12px 110px;
+  }
+  .header{
+    width:100%; max-width:480px; color:#fff; padding:16px 18px; border-radius:18px;
+    background:linear-gradient(90deg,var(--blue),var(--red)); box-shadow:var(--shadow);
+    display:flex; align-items:center; justify-content:space-between; margin-top:6px;
+  }
+  .brand{font-weight:600;letter-spacing:.3px}
+  .chip{background:rgba(255,255,255,.18); padding:6px 10px; border-radius:999px; font-size:12px}
+  .card{width:100%; max-width:480px; background:var(--card); border-radius:16px; padding:18px; box-shadow:var(--shadow); margin-top:16px; animation:fade .25s ease}
+  .muted{color:var(--muted); font-size:13px}
+  .row{display:flex; gap:12px}
+  input[type="text"], input[type="password"], input[type="number"]{
+    width:100%; padding:12px 14px; border:1px solid #e5e7eb; border-radius:12px; font-size:15px; outline:none; transition:box-shadow .2s,border-color .2s;
+  }
+  input:focus{border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+  button{
+    border:none; border-radius:12px; padding:12px 14px; font-weight:600; cursor:pointer;
+    background:linear-gradient(90deg,var(--blue),var(--red)); color:#fff; transition:transform .15s,filter .2s; width:100%;
+  }
+  button:hover{transform:translateY(-1px); filter:brightness(.98)}
+  button:disabled{opacity:.6; cursor:not-allowed; transform:none}
+  .btn-dark{background:#111827}
+  .btn-plain{background:#6b7280}
+  .saldo-angka{font-size:26px; font-weight:600}
+  .saldo-row{display:flex; align-items:center; justify-content:space-between}
+  .history-list{max-height:220px; overflow-y:auto; border-top:1px solid #f1f1f1; margin-top:10px; padding-top:8px}
+  .history-item{display:flex; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid #f5f5f5; font-size:14px}
+  .negative{color:#b91c1c} .positive{color:#16a34a}
+  .footer{
+    position:fixed; left:0; right:0; bottom:0; background:#fff; border-top-left-radius:14px; border-top-right-radius:14px;
+    box-shadow:0 -8px 20px rgba(0,0,0,.08); padding:10px 12px; display:flex; justify-content:space-around; z-index:5
+  }
+  .ft{font-size:12px; text-align:center; cursor:pointer; user-select:none}
+  .ft img{width:26px; height:26px; display:block; margin:0 auto 4px}
+  #toast{
+    position:fixed; bottom:86px; left:50%; transform:translateX(-50%); background:var(--blue); color:#fff; padding:10px 16px; border-radius:10px; opacity:0; transition:opacity .25s; z-index:9
+  }
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; z-index:20
+  }
+  .modal{background:#fff; border-radius:14px; width:90%; max-width:420px; padding:18px; box-shadow:var(--shadow); animation:pop .2s ease}
+  .modal h3{margin:0 0 10px 0; color:var(--blue)}
+  .hidden{display:none !important}
+  @keyframes fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)}}
+  @keyframes pop{from{opacity:0; transform:scale(.98)} to{opacity:1; transform:scale(1)}}
+
+  /* Splash screen styles */
+  #splash {
+    position:fixed; inset:0; background:linear-gradient(135deg,var(--blue),var(--red));
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    color:#fff; font-size:22px; font-weight:600; z-index:999;
+    animation: splashFadeOut 1s ease forwards;
+    animation-delay: 2.5s; /* durasi sebelum hilang */
+  }
+  #splash h1 {
+    font-size:28px; margin:0; text-align:center; animation: fadeInText 1s ease;
+  }
+  @keyframes fadeInText {from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)}}
+  @keyframes splashFadeOut {to{opacity:0; visibility:hidden}}
+</style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash">
+  <h1>bahan percobaan<br>#2</h1>
+  </div>
+
+<!-- HEADER -->
+<div id="hdr" class="header hidden">
+  <div class="brand">Dana Tabungan</div>
+  <div class="chip" id="chipUser">Guest</div>
+</div>
+
+<script>
+  // Tunggu 3 detik, lalu hilangkan splash screen
+  setTimeout(function(){
+    document.getElementById("splash").style.opacity = "0";
+    setTimeout(function(){
+      document.getElementById("splash").style.display = "none";
+      document.getElementById("main").style.display = "block";
+    }, 800); // tunggu transisi fade-out selesai
+  }, 3000);
+</script>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="card">
+  <h2>Masuk</h2>
+  <p class="muted">Gunakan akunmu untuk lanjut</p>
+  <input type="text" id="loginUsername" placeholder="Username" autocomplete="username" />
+  <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" />
+  <div class="row">
+    <button id="btnLogin">Login</button>
+    <button id="toRegister" class="btn-dark">Daftar</button>
+  </div>
+  <div id="loginMsg" class="muted"></div>
+</div>
+
+<!-- REGISTER -->
+<div id="registerScreen" class="card hidden">
+  <h2 style="margin:0 0 6px 0; color:var(--blue); text-align:center;">Daftar Akun Baru</h2>
+  <p class="muted" style="text-align:center; margin-top:0">PIN akan disimpan per akun</p>
+  <input type="text" id="regUsername" placeholder="Username baru" />
+  <input type="password" id="regPassword" placeholder="Password" />
+  <input type="password" id="regPIN" placeholder="PIN (4 digit)" />
+  <div class="row">
+    <button id="btnRegister">Buat Akun</button>
+    <button id="toLogin" class="btn-plain">Batal</button>
+  </div>
+  <div id="regMsg" class="muted" style="color:#b91c1c; margin-top:10px;"></div>
+</div>
+
+<!-- PIN VERIFICATION (Step setelah login) -->
+<div id="pinScreen" class="card hidden">
+  <h2 style="margin:0 0 6px 0; color:var(--blue); text-align:center;">Verifikasi PIN</h2>
+  <p class="muted" style="text-align:center; margin-top:0">Masukkan PIN untuk masuk ke dashboard</p>
+  <input type="password" id="pinInput" placeholder="PIN 4 digit" inputmode="numeric" maxlength="6" />
+  <div class="row">
+    <button id="btnVerifyPIN">Verifikasi</button>
+    <button id="btnLogoutPin" class="btn-plain">Ganti Akun</button>
+  </div>
+  <div id="pinMsg" class="muted" style="color:#b91c1c; margin-top:10px;"></div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden" style="width:100%; max-width:480px;">
+  <div class="card">
+    <div class="saldo-row">
+      <div>
+        <div class="muted">Saldo</div>
+        <div class="saldo-angka" id="saldoText">Rp0</div>
+      </div>
+      <div>
+        <button id="btnHide" style="min-width:110px">Sembunyikan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 10px 0;">Kelola Saldo</h3>
+    <input type="number" id="amountInput" placeholder="Masukkan nominal..." />
+    <div class="row">
+      <button id="btnTambah">Tambah</button>
+      <button id="btnKurangi" class="btn-dark">Kurangi</button>
+    </div>
+
+    <h4 style="margin:14px 0 8px 0;">Riwayat Transaksi</h4>
+    <div id="historyList" class="history-list">
+      <div class="muted">Belum ada transaksi</div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button id="btnClear" class="btn-plain">Hapus Riwayat</button>
+      <button id="btnLogout" class="btn-dark">Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER MENU -->
+<div class="footer">
+  <div class="ft" onclick="openModal('modalScan')" title="Scan (demo)">
+    <img src="https://img.icons8.com/ios-filled/50/qr-code--v1.png" alt="scan"/>
+    <div>Scan</div>
+  </div>
+  <div class="ft" onclick="openModal('modalKirim')" title="Kirim saldo">
+    <img src="https://img.icons8.com/ios-filled/50/money-transfer.png" alt="kirim"/>
+    <div>Kirim</div>
+  </div>
+  <div class="ft" onclick="openModal('modalTerima')" title="Terima saldo">
+    <img src="https://img.icons8.com/ios-filled/50/request-money.png" alt="terima"/>
+    <div>Terima</div>
+  </div>
+  <div class="ft" onclick="openModal('modalProfil')" title="Profil & PIN">
+    <img src="https://img.icons8.com/ios-filled/50/user-male-circle.png" alt="profil"/>
+    <div>Profil</div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- MODALS -->
+<div id="modalKirim" class="overlay hidden">
+  <div class="modal">
+    <h3>Kirim Saldo</h3>
+    <p class="muted">Masukkan <b>username tujuan</b>, nominal, lalu verifikasi PIN.</p>
+    <input type="text" id="kirimUser" placeholder="Username tujuan" />
+    <input type="number" id="kirimNominal" placeholder="Nominal" min="1" />
+    <button id="btnKirimSaldo">Kirim</button>
+    <button class="btn-plain" onclick="closeModal('modalKirim')">Tutup</button>
+    <div id="kirimMsg" class="muted" style="color:#b91c1c; margin-top:10px;"></div>
+  </div>
+</div>
+
+<div id="modalTerima" class="overlay hidden">
+  <div class="modal">
+    <h3>Saldo Masuk Tertunda</h3>
+    <div id="listSaldoMasuk" class="history-list" style="max-height:260px;"></div>
+    <button class="btn-plain" onclick="closeModal('modalTerima')">Tutup</button>
+  </div>
+</div>
+
+<div id="modalProfil" class="overlay hidden">
+  <div class="modal">
+    <h3>Profil & Keamanan</h3>
+    <p class="muted">Ubah PIN dan password akun ini.</p>
+    <input type="password" id="oldPIN" placeholder="PIN lama" />
+    <input type="password" id="newPIN" placeholder="PIN baru (4 digit)" />
+    <button id="btnUbahPIN">Ubah PIN</button>
+    <div style="height:8px"></div>
+    <input type="password" id="oldPass" placeholder="Password lama" />
+    <input type="password" id="newPass" placeholder="Password baru" />
+    <button id="btnUbahPass">Ubah Password</button>
+    <button class="btn-plain" onclick="closeModal('modalProfil')" style="margin-top:10px">Tutup</button>
+    <div id="profilMsg" class="muted" style="color:#b91c1c; margin-top:10px;"></div>
+  </div>
+</div>
+
+<div id="modalScan" class="overlay hidden">
+  <div class="modal">
+    <h3>Scan (Demo)</h3>
+    <p class="muted">Fitur contoh. Tidak ada tindakan.</p>
+    <button class="btn-plain" onclick="closeModal('modalScan')">Tutup</button>
+  </div>
+</div>
+
+<script>
+/* =========================
+   Konfigurasi sederhana
+========================= */
+const DEFAULT_PIN = "1234"; // Kalau akun belum punya PIN (legacy), pakai ini.
+
+let currentUser = null;     // username aktif
+let hiddenSaldo = false;    // toggle hide saldo
+let saldo = 0;
+let historyData = [];       // [{type, amount, date}]
+let pendingTransfers = {};  // per-username: array of {from, amount, date}
+
+/* =========================
+   Utilitas
+========================= */
+const el = id => document.getElementById(id);
+const now = () => new Date().toLocaleString();
+const rp = n => "Rp" + Number(n).toLocaleString("id-ID");
+function toast(msg, color="var(--blue)"){
+  const t=el('toast'); t.textContent=msg; t.style.background=color; t.style.opacity=1;
+  setTimeout(()=>t.style.opacity=0, 2200);
+}
+
+function saveAll(){
+  if(!currentUser) return;
+  localStorage.setItem('saldo_'+currentUser, saldo);
+  localStorage.setItem('history_'+currentUser, JSON.stringify(historyData));
+  // Simpan pending milik user sendiri (inbox)
+  localStorage.setItem('inbox_'+currentUser, JSON.stringify(pendingTransfers[currentUser] || []));
+}
+function loadAll(){
+  if(!currentUser) return;
+  saldo = parseInt(localStorage.getItem('saldo_'+currentUser) || 0);
+  historyData = JSON.parse(localStorage.getItem('history_'+currentUser) || "[]");
+  const inbox = JSON.parse(localStorage.getItem('inbox_'+currentUser) || "[]");
+  pendingTransfers[currentUser] = inbox;
+  renderSaldo(); renderHist();
+}
+
+/* =========================
+   Auth & PIN
+========================= */
+function getPass(u){ return localStorage.getItem('pass_'+u); }
+function setPass(u,p){ localStorage.setItem('pass_'+u, p); }
+function getPIN(u){ return localStorage.getItem('pin_'+u) || DEFAULT_PIN; }
+function setPIN(u,p){ localStorage.setItem('pin_'+u, p); }
+function userExists(u){ return getPass(u) !== null; }
+
+function showLogin(){ hideAllScreens(); el('loginScreen').classList.remove('hidden'); }
+function showRegister(){ hideAllScreens(); el('registerScreen').classList.remove('hidden'); }
+function showPIN(){ hideAllScreens(); el('pinScreen').classList.remove('hidden'); el('pinInput').focus(); }
+function showApp(){ hideAllScreens(); el('hdr').classList.remove('hidden'); el('app').classList.remove('hidden'); }
+
+function hideAllScreens(){
+  ['loginScreen','registerScreen','pinScreen','app','hdr'].forEach(id=>el(id).classList.add('hidden'));
+}
+
+/* =========================
+   UI App
+========================= */
+function renderSaldo(){
+  el('saldoText').textContent = hiddenSaldo ? "••••••" : rp(saldo);
+  el('btnHide').textContent = hiddenSaldo ? "Tampilkan" : "Sembunyikan";
+}
+function renderHist(){
+  const list=el('historyList');
+  if(!historyData.length){ list.innerHTML = '<div class="muted">Belum ada transaksi</div>'; return; }
+  list.innerHTML = '';
+  historyData.slice().reverse().forEach(h=>{
+    const row=document.createElement('div');
+    row.className='history-item '+(h.amount<0?'negative':'positive');
+    row.innerHTML = `<span>${h.type} <span class="muted">(${h.date})</span></span>
+                     <span>${rp(h.amount)}</span>`;
+    list.appendChild(row);
+  });
+}
+function openModal(id){
+  if(!currentUser){ toast("Silakan login", "#b91c1c"); return; }
+  if(id==='modalTerima') renderInbox();
+  el(id).classList.remove('hidden');
+}
+function closeModal(id){ el(id).classList.add('hidden'); el('kirimMsg').textContent=''; el('profilMsg').textContent=''; }
+
+/* =========================
+   Transaksi dasar
+========================= */
+function addHistory(type, amount){
+  historyData.push({type, amount, date: now()});
+}
+function tambahSaldoFlow(){
+  const n = parseInt(el('amountInput').value);
+  if(!n || n<=0) return toast("Nominal tidak valid", "#b91c1c");
+  // Minta PIN
+  verifyPinInline().then(ok=>{
+    if(!ok) return;
+    saldo += n; addHistory('Tambah', n); saveAll(); renderSaldo(); renderHist();
+    el('amountInput').value=''; toast("Saldo bertambah");
+  });
+}
+function kurangiSaldoFlow(){
+  const n = parseInt(el('amountInput').value);
+  if(!n || n<=0) return toast("Nominal tidak valid", "#b91c1c");
+  if(n>saldo) return toast("Saldo tidak cukup", "#b91c1c");
+  verifyPinInline().then(ok=>{
+    if(!ok) return;
+    saldo -= n; addHistory('Kurangi', -n); saveAll(); renderSaldo(); renderHist();
+    el('amountInput').value=''; toast("Saldo berkurang");
+  });
+}
+function clearHistoryFlow(){
+  verifyPinInline().then(ok=>{
+    if(!ok) return;
+    historyData = []; saveAll(); renderHist(); toast("Riwayat dihapus");
+  });
+}
+
+/* =========================
+   Kirim / Terima (inbox)
+========================= */
+function renderInbox(){
+  const wrap = el('listSaldoMasuk');
+  const arr = pendingTransfers[currentUser] || [];
+  if(!arr.length){ wrap.innerHTML='<div class="muted">Tidak ada saldo masuk</div>'; return; }
+  wrap.innerHTML='';
+  arr.forEach((it, idx)=>{
+    const row = document.createElement('div');
+    row.className='history-item';
+    row.innerHTML = `<span>Dari <b>${it.from}</b> <span class="muted">(${new Date(it.date).toLocaleString()})</span></span>
+                     <span>${rp(it.amount)}</span>`;
+    // tombol terima
+    const btn = document.createElement('button');
+    btn.textContent = "Terima";
+    btn.style.marginLeft = '8px';
+    btn.onclick = ()=> acceptTransfer(idx);
+    const right = document.createElement('div');
+    right.style.display='flex'; right.style.alignItems='center'; right.style.gap='6px';
+    right.appendChild(document.createTextNode(''));
+    // we rebuild row to include button
+    row.innerHTML = '';
+    const left = document.createElement('div');
+    left.innerHTML = `Dari <b>${it.from}</b> <span class="muted">(${new Date(it.date).toLocaleString()})</span>`;
+    const amt = document.createElement('div');
+    amt.textContent = rp(it.amount);
+    amt.style.fontWeight='600';
+    row.appendChild(left); row.appendChild(amt);
+    const btnWrap = document.createElement('div');
+    btnWrap.style.marginLeft='auto';
+    btnWrap.appendChild(btn);
+    row.appendChild(btnWrap);
+    wrap.appendChild(row);
+  });
+}
+function acceptTransfer(index){
+  verifyPinInline().then(ok=>{
+    if(!ok) return;
+    let arr = pendingTransfers[currentUser] || [];
+    if(index<0 || index>=arr.length) return;
+    const tx = arr.splice(index,1)[0];
+    saldo += tx.amount; addHistory(`Terima dari [${tx.from}]`, tx.amount);
+    pendingTransfers[currentUser] = arr;
+    saveAll(); renderSaldo(); renderHist(); renderInbox();
+    toast(`Berhasil terima ${rp(tx.amount)}`);
+  });
+}
+function sendMoney(){
+  const tujuan = el('kirimUser').value.trim();
+  const nominal = parseInt(el('kirimNominal').value);
+  if(!tujuan || !nominal || nominal<=0){ el('kirimMsg').textContent="Isi username tujuan & nominal valid"; return; }
+  if(tujuan===currentUser){ el('kirimMsg').textContent="Tidak bisa kirim ke akun sendiri"; return; }
+  if(!userExists(tujuan)){ el('kirimMsg').textContent="Akun tujuan tidak ditemukan"; return; }
+  if(nominal>saldo){ el('kirimMsg').textContent="Saldo tidak cukup"; return; }
+
+  // Minta PIN untuk otorisasi kirim
+  verifyPinInline().then(ok=>{
+    if(!ok) return;
+    // Potong saldo & catat history pengirim
+    saldo -= nominal; addHistory(`Kirim ke [${tujuan}]`, -nominal);
+    // Masukkan ke inbox penerima
+    let inbox = JSON.parse(localStorage.getItem('inbox_'+tujuan) || "[]");
+    inbox.push({from: currentUser, amount: nominal, date: new Date().toISOString()});
+    localStorage.setItem('inbox_'+tujuan, JSON.stringify(inbox));
+
+    saveAll(); renderSaldo(); renderHist();
+    el('kirimUser').value=''; el('kirimNominal').value=''; el('kirimMsg').textContent='';
+    closeModal('modalKirim'); toast(`Kirim ${rp(nominal)} ke "${tujuan}" berhasil`);
+  });
+}
+
+/* =========================
+   Inline PIN Prompt
+========================= */
+function verifyPinInline(){
+  return new Promise(resolve=>{
+    const pin = prompt("Masukkan PIN:");
+    const real = getPIN(currentUser);
+    if(pin===real){ resolve(true); }
+    else { toast("PIN salah", "#b91c1c"); resolve(false); }
+  });
+}
+
+/* =========================
+   Event bindings
+========================= */
+// Auth
+el('toRegister').onclick = showRegister;
+el('toLogin').onclick = showLogin;
+
+el('btnLogin').onclick = ()=>{
+  const u = el('loginUsername').value.trim();
+  const p = el('loginPassword').value.trim();
+  if(!u || !p){ el('loginMsg').textContent="Lengkapi username & password"; return; }
+  if(!userExists(u)){ el('loginMsg').textContent="Akun tidak ditemukan"; return; }
+  if(getPass(u)!==p){ el('loginMsg').textContent="Password salah"; return; }
+  // login OK → lanjut ke verifikasi PIN
+  currentUser = u;
+  el('chipUser').textContent = u;
+  el('loginMsg').textContent = "";
+  showPIN();
+};
+
+el('btnRegister').onclick = ()=>{
+  const u = el('regUsername').value.trim();
+  const p = el('regPassword').value.trim();
+  const pin = el('regPIN').value.trim();
+  if(!u || !p || !pin){ el('regMsg').textContent="Lengkapi semua field"; return; }
+  if(userExists(u)){ el('regMsg').textContent="Username sudah terdaftar"; return; }
+  if(!/^[0-9]{4,6}$/.test(pin)){ el('regMsg').textContent="PIN 4–6 digit"; return; }
+  setPass(u,p); setPIN(u,pin);
+  // Siapkan data awal
+  localStorage.setItem('saldo_'+u, '0');
+  localStorage.setItem('history_'+u, '[]');
+  localStorage.setItem('inbox_'+u, '[]');
+  el('regMsg').textContent="Akun dibuat. Silakan login.";
+  // Auto-switch ke login
+  setTimeout(()=>{ showLogin(); el('loginUsername').value=u; }, 600);
+};
+
+// PIN step setelah login
+el('btnVerifyPIN').onclick = ()=>{
+  const pin = el('pinInput').value.trim();
+  if(!pin){ el('pinMsg').textContent="Masukkan PIN"; return; }
+  if(pin !== getPIN(currentUser)){ el('pinMsg').textContent="PIN salah"; return; }
+  // PIN benar → masuk app
+  el('pinMsg').textContent="";
+  el('pinInput').value="";
+  loadAll(); renderSaldo(); renderHist();
+  showApp();
+};
+el('btnLogoutPin').onclick = ()=>{
+  currentUser=null; showLogin();
+};
+
+// App buttons
+el('btnHide').onclick = ()=>{ hiddenSaldo = !hiddenSaldo; renderSaldo(); };
+el('btnTambah').onclick = tambahSaldoFlow;
+el('btnKurangi').onclick = kurangiSaldoFlow;
+el('btnClear').onclick = clearHistoryFlow;
+el('btnLogout').onclick = ()=>{
+  currentUser=null; showLogin(); toast("Logout");
+};
+
+// Kirim/Terima/Profil
+el('btnKirimSaldo').onclick = sendMoney;
+
+el('btnUbahPIN').onclick = ()=>{
+  if(!currentUser) return;
+  const oldP = el('oldPIN').value.trim();
+  const newP = el('newPIN').value.trim();
+  if(!oldP || !newP){ el('profilMsg').textContent="Isi PIN lama & baru"; return; }
+  if(oldP !== getPIN(currentUser)){ el('profilMsg').textContent="PIN lama salah"; return; }
+  if(!/^[0-9]{4,6}$/.test(newP)){ el('profilMsg').textContent="PIN 4–6 digit"; return; }
+  setPIN(currentUser, newP);
+  el('oldPIN').value=''; el('newPIN').value='';
+  el('profilMsg').textContent="PIN berhasil diubah";
+  toast("PIN diubah");
+};
+
+el('btnUbahPass').onclick = ()=>{
+  if(!currentUser) return;
+  const oldP = el('oldPass').value.trim();
+  const newP = el('newPass').value.trim();
+  if(!oldP || !newP){ el('profilMsg').textContent="Isi password lama & baru"; return; }
+  if(getPass(currentUser)!==oldP){ el('profilMsg').textContent="Password lama salah"; return; }
+  setPass(currentUser, newP);
+  el('oldPass').value=''; el('newPass').value='';
+  el('profilMsg').textContent="Password berhasil diubah";
+  toast("Password diubah");
+};
+
+/* Autofocus kecil */
+el('loginUsername').focus();
+</script>
+</body>
+</html>
